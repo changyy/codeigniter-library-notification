@@ -86,6 +86,7 @@ $ git commit -am 'set PHPMailer version to v5.2.14 / https://github.com/PHPMaile
 
 # GMail Notes
 
-Q: SMTP ERROR: Password command failed / SMTP Error: Could not authenticate.
-A: https://www.google.com/settings/security/lesssecureapps
+- Q: SMTP ERROR: Password command failed / SMTP Error: Could not authenticate.
+
+  A: https://www.google.com/settings/security/lesssecureapps
 
