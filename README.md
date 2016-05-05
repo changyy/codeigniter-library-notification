@@ -3,16 +3,41 @@
 ```
 <?php
 
-	$obj = new Notification;
+require 'Notification.php';
 
-	// func 1: send mail
-	$obj->mail();
+$obj = new Notification;
 
-	// func 2: iOS app - Apple Push notification
-	$obj->apple_push_notification();
+// func 1: send mail
+$result = $obj->mail( 
+	array(
+		'smtp' => array(
+			'host' => 'smtp.gmail.com',
+			'port' => 587,
+			'secure' => 'tls',
+			//'debug' => 1,
+			'auth' => array(
+				'username' => 'account@gmail.com',
+				'password' => 'passowrd@gmail.com',
+			),
+		),
+		'sender' => array(
+			'name' => 'DisplayName',
+			'email' => 'account@gmail.com'
+		)
+	), 
+	'Mail Subject', 
+	'Mail Content', 
+	array( 
+		'to' => 'receiver@gmail.com'
+	) 
+);
 
-	// func 3: android app - Google Cloud Messaging
-	$obj->google_cloud_messaging();
+// func 2: iOS app - Apple Push notification
+$obj->apple_push_notification();
+
+// func 3: android app - Google Cloud Messaging
+$obj->google_cloud_messaging();
+
 ```
 
 # CodeIgniter Usage
@@ -58,3 +83,9 @@ $ git reset --hard e774bc9152de85547336e22b8926189e582ece95
 $ cd -
 $ git commit -am 'set PHPMailer version to v5.2.14 / https://github.com/PHPMailer/PHPMailer/commit/e774bc9152de85547336e22b8926189e582ece95'
 ```
+
+# GMail Notes
+
+Q: SMTP ERROR: Password command failed / SMTP Error: Could not authenticate.
+A: https://www.google.com/settings/security/lesssecureapps
+

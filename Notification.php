@@ -4,6 +4,8 @@ class Notification {
 	public function mail($mail_options = array(), $subject, $message, $receiver = array()) {
 		$mail = new PHPMailer;
 		if (isset($mail_options['smtp']) && is_array($mail_options['smtp'])) {
+			if (isset($mail_options['smtp']['debug']))
+				$mail->SMTPDebug = $mail_options['smtp']['debug'];
 			$mail->isSMTP();
 			if (isset($mail_options['smtp']['host']))
 				$mail->Host = $mail_options['smtp']['host'];
