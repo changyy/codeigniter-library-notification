@@ -31,12 +31,47 @@ $result = $obj->mail(
 		'to' => 'receiver@gmail.com'
 	) 
 );
+if ($result !== true) {
+	echo "[ERROR] EMAIL";
+	print_r($result);
+}
+
 
 // func 2: iOS app - Apple Push notification
-$obj->apple_push_notification();
+$result = $obj->apple_push_notification(
+	file_get_contents('/path/ios-apn-key'),
+	'iOS-Device-APN-Token'
+	array(
+		// apn payload format
+		'aps' => array(
+			'alert' => array(
+				'title' => $title,
+				'body' => $message,
+			)
+		)
+	)
+);
+if ($result !== true) {
+	echo "[ERROR] APN";
+	print_r($result);
+}
 
 // func 3: android app - Google Cloud Messaging
-$obj->google_cloud_messaging();
+$result = $obj->google_cloud_messaging(
+	'GCM_API_KEY',
+	'Android-Device-GCM-Token',
+	array(
+		// With your payload format
+		'data' => array(
+			'title' => 'Hello',
+			'message' => 'World'
+		)
+	)
+);
+if ($result !== true) {
+	echo "[ERROR] GCM";
+	print_r($result);
+}
 
 ```
 
