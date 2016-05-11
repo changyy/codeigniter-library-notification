@@ -17,7 +17,7 @@ $result = $obj->mail(
 			//'debug' => 1,
 			'auth' => array(
 				'username' => 'account@gmail.com',
-				'password' => 'passowrd@gmail.com',
+				'password' => 'password@gmail.com',
 			),
 		),
 		'sender' => array(
@@ -88,7 +88,7 @@ $ cd /path/project/application/library
 $ git clone --recursive https://github.com/changyy/codeigniter-library-notification
 ```
 
-## Exmaple
+## Example
 
 ```
 <?php
