@@ -31,7 +31,7 @@ $result = $obj->mail(
 		'to' => 'receiver@gmail.com'
 	) 
 );
-if ($result !== true) {
+if ($result['status'] !== true) {
 	echo "[ERROR] EMAIL";
 	print_r($result);
 }
@@ -51,7 +51,7 @@ $result = $obj->apple_push_notification(
 		)
 	)
 );
-if ($result !== true) {
+if ($result['status'] !== true) {
 	echo "[ERROR] APN";
 	print_r($result);
 }
@@ -68,7 +68,7 @@ $result = $obj->google_cloud_messaging(
 		)
 	)
 );
-if ($result !== true) {
+if ($result['status'] !== true) {
 	echo "[ERROR] GCM";
 	print_r($result);
 }
