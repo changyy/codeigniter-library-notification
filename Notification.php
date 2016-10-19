@@ -170,7 +170,7 @@ class Notification {
 			$token = array($token);
 		$payload['registration_ids'] = $token;
 
-		$current_timestamp = date('Y-m-d H:i:S');
+		$current_timestamp = date('Y-m-d H:i:s');
 
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, "https://android.googleapis.com/gcm/send");
@@ -242,17 +242,16 @@ CREATE TABLE `notification_pool` (
 SQLite:
 
 CREATE TABLE `notification_message` (
-  `id` INTEGER AUTO_INCREMENT,
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `title` varchar(256) DEFAULT NULL,
   `message` text NOT NULL,
   `extra_data` text,
   `condition_data` text,
   `timestamp` timestamp NOT NULL,
-  `total_receiver` int(11) DEFAULT '0',
-  PRIMARY KEY (id)
+  `total_receiver` int(11) DEFAULT '0'
 );
 CREATE TABLE `notification_pool` (
-  `id` INTEGER AUTO_INCREMENT,
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `mid` int(11) NOT NULL,
   `os_type` varchar(16) NOT NULL ,
   `app_id` varchar(64) NOT NULL DEFAULT 'none',
@@ -260,8 +259,7 @@ CREATE TABLE `notification_pool` (
   `token` text NOT NULL,
   `mode` varchar(16) NOT NULL DEFAULT 'production',
   `sendtime` timestamp NULL DEFAULT NULL,
-  `error` text,
-  PRIMARY KEY (id)
+  `error` text
 );
 CREATE UNIQUE INDEX app_id_key ON notification_pool(`app_id`,`mid`,`os_type`,`token_check`);
 CREATE TABLE `notification_sender` (
@@ -273,6 +271,7 @@ CREATE TABLE `notification_sender` (
   `apns_development_keyfile` blob
 );
 CREATE UNIQUE INDEX os_app_id_key ON notification_sender (`os_type`,`app_id`);
+
 */
 
 	public function batch_run_via_sqlite3($db = 'test.db', $receiver_count_per_run = 15000, $memory_limit = "2048M", $exec_timeout = 0) {
@@ -404,15 +403,14 @@ CREATE UNIQUE INDEX os_app_id_key ON notification_sender (`os_type`,`app_id`);
 								// batch mode
 								if (count($token_pool) > 900) {
 									if ($os_type == 'ios') {
-										$response = $this->fireiOSNotification($api, $payload['data'], $token_pool, $level3);
+										$response = $this->apple_push_notification_with_api_file($api, $token_pool, $payload['data'], !strcmp($mode, 'sandbox'));
 									} else if ($os_type == 'android') {
-										$response = $this->fireAndroidNotification($api, $payload, $token_pool, $level3);
+										$response = $this->google_cloud_messaging($api, $token_pool, $payload);
 									}
 
 									$success_list = array_merge($success_list, $response['success']);
-									$error_list = array_merge($error_list, $response['error']);
-									$error_log = array_merge($error_log, $response['error_log']);
-									$run_log = array_merge($run_log, $response['run_log']);
+									$error_list = array_merge($error_list, $response['failure']);
+									$run_log = array_merge($run_log, $response['log']);
 
 									//print_r($token_pool);
 									$token_pool = array();
@@ -421,58 +419,58 @@ CREATE UNIQUE INDEX os_app_id_key ON notification_sender (`os_type`,`app_id`);
 							// batch mode
 							if (count($token_pool) > 0) {
 								if ($os_type == 'ios') {
-									$response = $this->fireiOSNotification($api, $payload['data'], $token_pool, $level3);
+									$response = $this->apple_push_notification_with_api_file($api, $token_pool, $payload['data'], !strcmp($mode, 'sandbox'));
 								} else if ($os_type == 'android') {
-									$response = $this->fireAndroidNotification($api, $payload, $token_pool, $level3);
+									$response = $this->google_cloud_messaging($api, $token_pool, $payload);
 								}
+print_r($response);
 
 								$success_list = array_merge($success_list, $response['success']);
-								$error_list = array_merge($error_list, $response['error']);
-								$error_log = array_merge($error_log, $response['error_log']);
-								$run_log = array_merge($run_log, $response['run_log']);
+								$error_list = array_merge($error_list, $response['failure']);
+								$error_log = array_merge($error_log, $response['log']);
+								$run_log = array_merge($run_log, $response['log']);
 
 								$token_pool = array();
 							}
 
-							$current_timestamp = date('Y-m-d H:i:s');
-
 							// report
 							while(count($success_list) > 0) {
-								$target = array_splice($success_list, 0, 500);
+								//$target = array_splice($success_list, 0, 500);
+								$target = array();
+								foreach(array_splice($success_list, 0, 500) as $item) {
+									if (isset($level3[$item['token']]))
+										array_push($target, '("'.$level3[$item['token']].'","'.$message_id.'","'.SQLite3::escapeString($item['timestamp']).'","'.SQLite3::escapeString($os_type).'","'.SQLite3::escapeString($app_id).'","'.SQLite3::escapeString($item['token']).'","'.SQLite3::escapeString(md5($item['token'])).'")');
+								}
 
-								$statement = $db->prepare("UPDATE notification_pool SET `sendtime`=:sendtime WHERE id in ('".implode("','", $target)."')");
-								$statement->bindValue(':sendtime', $current_timestamp);
+								$sql = "INSERT OR REPLACE INTO notification_pool (id,mid,sendtime,os_type,app_id,token,token_check) VALUES ".implode(",", $target);
+								//echo "sql:[$sql]\n";
+								$statement = $db->prepare($sql);
 								$exec_time = microtime(true);
 								$query = $statement->execute();
 								$exec_time = microtime(true) - $exec_time;
 								array_push( $output['time'] , array( $exec_time , ' UPDAET notification_pool, items: '. count($target) ) );
 							}
 
-							if(count($error_list) > 0) {
-								$update_log = array();
-								for ( $i=0, $cnt =count($error_list) ; $i<$cnt ; ++$i ) {
-									if (empty($error_list[$i]))
-										continue;
-									array_push( $update_log, 
-										"(".SQLite3::escapeString($error_list[$i]).",".SQLite3::escapeString($error_log[$i]).",".SQLite3::escapeString($current_timestamp).")"
-									);
+							// report
+							while(count($error_list) > 0) {
+								$target = array();
+								foreach(array_splice($error_list, 0, 500) as $item) {
+									if (isset($level3[$item['token']]))
+										array_push($target, '("'.$level3[$item['token']].'","'.$message_id.'","'.SQLite3::escapeString($item['timestamp']).'","'.SQLite3::escapeString($item['log']).'","'.SQLite3::escapeString($os_type).'","'.SQLite3::escapeString($app_id).'","'.SQLite3::escapeString($item['token']).'","'.SQLite3::escapeString(md5($item['token'])).'")');
 								}
-								while (count($update_log) > 0 ) {
-									$target = array_splice($update_log, 0, 200);
-									$statement = $db->prepare('INSERT INTO `notification_pool` (id,error,sendtime) VALUES '.implode(',', $target).' ON DUPLICATE KEY UPDATE error=VALUES(error), sendtime=VALUES(sendtime) ');
 
-									$exec_time = microtime(true);
-									$query = $statement->execute();
-									$exec_time = microtime(true) - $exec_time;
-									array_push( $output['time'] , array($exec_time, 'UPDATE notification_pool via INSERT/DUPLICATE KEY UPDATE, items: '.count($target)) );
-								}
+								$sql = "INSERT OR REPLACE INTO notification_pool (id,mid,sendtime,error,os_type,app_id,token,token_check) VALUES ".implode(",", $target);
+								//echo "sql:[$sql]\n";
+								$statement = $db->prepare($sql);
+								$exec_time = microtime(true);
+								$query = $statement->execute();
+								$exec_time = microtime(true) - $exec_time;
+								array_push( $output['time'] , array( $exec_time , ' UPDAET notification_pool error log, items: '. count($target) ) );
 							}
 						}
 					}
 				}
 			}
-
 		}
-		// Step 4: Update log
 	}
 }

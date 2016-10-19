@@ -75,6 +75,41 @@ if ($result['status'] !== true) {
 
 ```
 
+# Batch mode
+
+Prepare:
+
+```
+sqlite> INSERT INTO notification_sender(os_type,app_id,gcm_api_info) VALUES ('android','MyAndroidAppPackageName','API_KEY');
+sqlite> INSERT INTO notification_message(id,title,message,timestamp) VALUES(1,'Hello','World',datetime('now','localtime'));
+```
+
+Receivers:
+
+```
+sqlite> INSERT INTO notification_pool (mid,os_type,app_id,token_check,token,mode) VALUES (1,'android','MyAndroidAppPackageName','md5("GCM_TOKEN_140-180_BYTES_1")','GCM_TOKEN_140-180_BYTES_1','production');
+sqlite> INSERT INTO notification_pool (mid,os_type,app_id,token_check,token,mode) VALUES (1,'android','MyAndroidAppPackageName','md5("GCM_TOKEN_140-180_BYTES_2")','GCM_TOKEN_140-180_BYTES_2','production');
+sqlite> INSERT INTO notification_pool (mid,os_type,app_id,token_check,token,mode) VALUES (1,'android','MyAndroidAppPackageName','md5("GCM_TOKEN_140-180_BYTES_3")','GCM_TOKEN_140-180_BYTES_3','production');
+sqlite> INSERT INTO notification_pool (mid,os_type,app_id,token_check,token,mode) VALUES (1,'android','MyAndroidAppPackageName','md5("GCM_TOKEN_140-180_BYTES_4")','GCM_TOKEN_140-180_BYTES_4','production');
+```
+
+Run:
+
+```
+<?php
+require 'Notification.php';
+
+$obj = new Notification;
+$obj->batch_run_via_sqlite3();
+```
+
+Result:
+
+```
+sqlite> SELECT mid, error, count(*) FROM notification_pool WHERE sendtime IS NOT NULL GROUP BY mid, error
+sqlite> SELECT mid, SUM(CASE WHEN error IS NULL THEN 1 ELSE 0 END) AS success, SUM(CASE WHEN error IS NULL THEN 0 ELSE 1 END) AS failure, count(*) AS total FROM notification_pool GROUP BY mid;
+```
+
 # CodeIgniter Usage
 
 ## Info
